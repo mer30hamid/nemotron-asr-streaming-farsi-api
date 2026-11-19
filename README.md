@@ -4,7 +4,7 @@ An OpenAI-compatible Persian speech-to-text API server for the Nemotron ASR stre
 
 The server loads the Persian Nemotron model and exposes one endpoint, `POST /v1/audio/transcriptions`. Any dictation client that can talk to that endpoint can use it. VocaLinux on Linux is the one I have tested. OpenWhispr should work the same way, but I have not tested it yet.
 
-The name comes from the original model, [mallahyari/nemotron-asr-streaming-farsi](https://github.com/mallahyari/nemotron-asr-streaming-farsi), plus `-api`. It has no client name in it, because the client can change. It has no `onnx` in it either. ONNX through sherpa-onnx is the backend I use now, but a different export of the same model could replace it later without a rename.
+The name comes from the original model, [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi), plus `-api`. The training code for that model lives at [mallahyari/nemotron-asr-streaming-farsi](https://github.com/mallahyari/nemotron-asr-streaming-farsi). It has no client name in it, because the client can change. It has no `onnx` in it either. ONNX through sherpa-onnx is the backend I use now, but a different export of the same model could replace it later without a rename.
 
 ```text
 You speak (Persian)
@@ -293,6 +293,7 @@ nemotron-asr-streaming-farsi-api/
 - OpenWhispr, the dictation app for Windows, macOS, and Linux that can point its BYOK mode at this API
 - sherpa-onnx by the k2-fsa team, the ONNX inference runtime used for decoding
 - [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi), the Persian Nemotron model, and its ONNX export [Nimaone/nemotron-asr-streaming-farsi-onnx](https://huggingface.co/Nimaone/nemotron-asr-streaming-farsi-onnx)
+- [mallahyari/nemotron-asr-streaming-farsi](https://github.com/mallahyari/nemotron-asr-streaming-farsi), the training and evaluation code for that model
 - NVIDIA Nemotron, the base streaming ASR architecture the Persian model was fine-tuned from
 
 Model weights are distributed under their own licenses. Check the model pages above before redistributing them.
