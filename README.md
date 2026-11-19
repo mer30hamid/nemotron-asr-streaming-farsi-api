@@ -1,8 +1,8 @@
 # nemotron-asr-streaming-farsi-api
 
-**An OpenAI-compatible Persian (Farsi) speech-to-text API server for the Nemotron ASR streaming model — local, no cloud, no GPU, no API key.**
+**An OpenAI-compatible Persian (Farsi) speech-to-text API server for the Nemotron ASR streaming model : local, no cloud, no GPU, no API key.**
 
-`nemotron-asr-streaming-farsi-api` runs the Persian Nemotron speech-to-text model locally on your CPU and exposes an OpenAI-compatible transcription endpoint (`POST /v1/audio/transcriptions`). Any dictation client that speaks that endpoint can use it — for example [VocaLinux](https://github.com/VocaHQ/vocalinux) with its Remote API engine on Linux, or OpenWhispr in BYOK mode on Windows, macOS and Linux.
+`nemotron-asr-streaming-farsi-api` runs the Persian Nemotron speech-to-text model locally on your CPU and exposes an OpenAI-compatible transcription endpoint (`POST /v1/audio/transcriptions`). Any dictation client that speaks that endpoint can use it : for example [VocaLinux](https://github.com/VocaHQ/vocalinux) with its Remote API engine on Linux, or OpenWhispr in BYOK mode on Windows, macOS and Linux.
 
 ```text
 You speak (Persian)
@@ -21,27 +21,27 @@ Text is typed into the focused app (dictation clients)
 
 Everything runs on your own machine. Audio never leaves `127.0.0.1` unless you deliberately point a client at a LAN address.
 
-The name follows the original model, [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi), plus `-api`. It deliberately does **not** contain `onnx` or a client name: ONNX via sherpa-onnx is the current backend, but the backend could change later (for example to another export of the same model), and the clients are interchangeable — VocaLinux is one of them, not the identity of this project.
+The name follows the original model, [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi), plus `-api`. It deliberately does **not** contain `onnx` or a client name: ONNX via sherpa-onnx is the current backend, but the backend could change later (for example to another export of the same model), and the clients are interchangeable ; VocaLinux is one of them, not the identity of this project.
 
 ## Features
 
-- **Persian dictation in any app** — through any OpenAI-compatible dictation client (VocaLinux on Linux, OpenWhispr on Windows/macOS/Linux, TapWisper, or plain `curl`)
-- **Fully local and private** — the server binds to `127.0.0.1` only; no account, no telemetry, no cloud API
-- **CPU-only inference** — quantized `int8` ONNX model via sherpa-onnx, no GPU required
-- **OpenAI-compatible endpoint** — `POST /v1/audio/transcriptions` returning `{"text": "..."}`
-- **Containerized and hardened** — read-only filesystem, all Linux capabilities dropped, `no-new-privileges`, read-only model mount
-- **Small footprint** — a single Python file, two dependencies (`sherpa-onnx`, `numpy`), `python:3.11-slim` base image
+- **Persian dictation in any app** : through any OpenAI-compatible dictation client (VocaLinux on Linux, OpenWhispr on Windows/macOS/Linux, TapWisper, or plain `curl`)
+- **Fully local and private** : the server binds to `127.0.0.1` only; no account, no telemetry, no cloud API
+- **CPU-only inference** : quantized `int8` ONNX model via sherpa-onnx, no GPU required
+- **OpenAI-compatible endpoint** : `POST /v1/audio/transcriptions` returning `{"text": "..."}`
+- **Containerized and hardened** : read-only filesystem, all Linux capabilities dropped, `no-new-privileges`, read-only model mount
+- **Small footprint** : a single Python file, two dependencies (`sherpa-onnx`, `numpy`), `python:3.11-slim` base image
 
 ## Requirements
 
 - Linux, with Docker Compose or Podman Compose (recommended), or Python 3.11+ to run the script directly
 - The Persian Nemotron ONNX model files (see below)
-- A dictation client to speak into — for example VocaLinux on Linux, or OpenWhispr on Windows/macOS/Linux — or just `curl` to test the API
-- A microphone — the client handles capture, voice activity detection, and text injection
+- A dictation client to speak into ; for example VocaLinux on Linux, or OpenWhispr on Windows/macOS/Linux ; or just `curl` to test the API
+- A microphone ; the client handles capture, voice activity detection, and text injection
 
 ## Get the model
 
-The model files are **not included** in this project. You have to download them yourself before you start the server — without them, the container will not start.
+The model files are **not included** in this project. You have to download them yourself before you start the server ; without them, the container will not start.
 
 Download them from Hugging Face:
 
@@ -71,7 +71,7 @@ Arrange the downloaded files like this:
     └── tokens.txt
 ```
 
-The server expects exactly this folder name — `nemotron-asr-streaming-farsi-onnx` — containing those four files. Check your download with:
+The server expects exactly this folder name ; `nemotron-asr-streaming-farsi-onnx` ; containing those four files. Check your download with:
 
 ```bash
 ls -lh /path/to/your/model-directory/nemotron-asr-streaming-farsi-onnx/
@@ -81,7 +81,7 @@ ls -lh /path/to/your/model-directory/nemotron-asr-streaming-farsi-onnx/
 
 ### 1. Point Compose at your model folder
 
-Copy the example environment file and set `MODEL_DIR` to the **model folder itself** — the folder containing `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx` and `tokens.txt` (not its parent, and not a symlink):
+Copy the example environment file and set `MODEL_DIR` to the **model folder itself** ; the folder containing `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx` and `tokens.txt` (not its parent, and not a symlink):
 
 ```bash
 cp .env.example .env
@@ -89,7 +89,7 @@ cp .env.example .env
 # MODEL_DIR=/home/yourname/models/nemotron-asr-streaming-farsi-onnx
 ```
 
-`.env` is git-ignored — it holds a path from your own machine and must never be committed. `compose.yaml` mounts it read-only exactly where the server looks for it:
+`.env` is git-ignored ; it holds a path from your own machine and must never be committed. `compose.yaml` mounts it read-only exactly where the server looks for it:
 
 ```yaml
 volumes:
@@ -108,7 +108,7 @@ With that mount, the server finds the files here:
 
 Those paths are fixed inside the container (`MODEL_PATH`, default `/models/nemotron-asr-streaming-farsi-onnx`). If any of the four files is missing, misnamed, or one level too deep or too shallow, model loading will fail at startup. Do not use a symlink inside a mounted volume: it is resolved inside the container, not on the host, and will break if its target is outside the mount.
 
-All other settings (port, threads, sample rate, language, decoding method, max upload, log level) are also in `.env` — see `.env.example` for the full list with defaults. You do not need to edit `compose.yaml` or the Python file to change them.
+All other settings (port, threads, sample rate, language, decoding method, max upload, log level) are also in `.env` ; see `.env.example` for the full list with defaults. You do not need to edit `compose.yaml` or the Python file to change them.
 
 ### 2. Build and start the server
 
@@ -135,7 +135,7 @@ Expected response:
 ### VocaLinux (Linux)
 
 1. Start the server (above) and leave it running.
-2. Open VocaLinux **Settings** and select the **Remote API** recognition engine — or start it from the terminal:
+2. Open VocaLinux **Settings** and select the **Remote API** recognition engine ; or start it from the terminal:
 
    ```bash
    vocalinux --engine remote_api
@@ -149,7 +149,7 @@ Expected response:
    | Endpoint | `/v1/audio/transcriptions` |
    | Model | `nemotron-farsi` |
 
-   The model name is only a label for VocaLinux — this server always transcribes with the Persian Nemotron model and ignores the `model` field in requests.
+   The model name is only a label for VocaLinux ; this server always transcribes with the Persian Nemotron model and ignores the `model` field in requests.
 
 4. Dictate as usual: hold your VocaLinux dictation key, speak Persian, and release. The transcript is typed into the focused window.
 
@@ -160,11 +160,11 @@ Expected response:
 
 1. Start the server (above) and leave it running.
 2. In OpenWhispr, open **Settings → Speech-to-Text / Transcription**.
-3. Set the provider to **OpenAI (BYOK / Cloud)** — not Local Whisper, not NVIDIA.
+3. Set the provider to **OpenAI (BYOK / Cloud)** ; not Local Whisper, not NVIDIA.
 4. Set **Base URL / Endpoint** to `http://127.0.0.1:8765/v1`, **Model** to `nemotron-farsi`, and **API Key** to any dummy value such as `sk-local` (the server does not check keys; the model field is ignored).
 5. Save, then press your dictation shortcut and speak Persian.
 
-If the client runs on a different machine from the server, `127.0.0.1` on that machine is not the server: set `ASR_HOST=0.0.0.0` in `.env`, open port `8765` on the server's firewall, and point the client at the server's LAN address, for example `http://192.168.1.10:8765/v1`. Only do this on a trusted LAN — the server has no authentication.
+If the client runs on a different machine from the server, `127.0.0.1` on that machine is not the server: set `ASR_HOST=0.0.0.0` in `.env`, open port `8765` on the server's firewall, and point the client at the server's LAN address, for example `http://192.168.1.10:8765/v1`. Only do this on a trusted LAN ; the server has no authentication.
 
 Other OpenAI-compatible dictation clients work the same way: point them at `http://127.0.0.1:8765/v1` with model `nemotron-farsi` and a dummy API key.
 
@@ -199,7 +199,7 @@ pip install -r requirements.txt
 MODEL_PATH=/path/to/nemotron-asr-streaming-farsi-onnx python nemotron_asr_streaming_farsi_api.py
 ```
 
-The script reads the model location from the `MODEL_PATH` environment variable (default `/models/nemotron-asr-streaming-farsi-onnx`). Outside the container, point `MODEL_PATH` at your real model folder — no symlink and no code edit needed. All other settings are environment variables too; see **Configuration** below.
+The script reads the model location from the `MODEL_PATH` environment variable (default `/models/nemotron-asr-streaming-farsi-onnx`). Outside the container, point `MODEL_PATH` at your real model folder ; no symlink and no code edit needed. All other settings are environment variables too; see **Configuration** below.
 
 ## API reference
 
@@ -216,14 +216,14 @@ Health check, also used by the Compose healthcheck.
 OpenAI-compatible transcription endpoint. Send the audio as a multipart form field named `file`.
 
 - Success: `200` with `{"text": "<transcript>"}`
-- Failure: `400` with `{"error": "<reason>"}` — for example a wrong sample rate, stereo audio, or a missing `file` field
+- Failure: `400` with `{"error": "<reason>"}` ; for example a wrong sample rate, stereo audio, or a missing `file` field
 - Unknown paths return `404`
 
 Under the hood, each request is decoded with a sherpa-onnx `OnlineRecognizer` (transducer, `greedy_search`, 128-dim features, language `fa-IR`). A short silence is fed before and after the audio so the streaming encoder does not clip the first or last words, and the server logs the audio duration, decoding time, and real-time factor (RTF) for every request.
 
 ## Configuration
 
-Settings come from environment variables, with the defaults below. For Docker/Podman, copy `.env.example` to `.env` and change only what you need — do not edit `compose.yaml` or `nemotron_asr_streaming_farsi_api.py` to change them:
+Settings come from environment variables, with the defaults below. For Docker/Podman, copy `.env.example` to `.env` and change only what you need ; do not edit `compose.yaml` or `nemotron_asr_streaming_farsi_api.py` to change them:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
@@ -257,33 +257,33 @@ nemotron-asr-streaming-farsi-api/
 
 | Symptom | Likely cause and fix |
 | --- | --- |
-| Container exits right away | One of `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, or `tokens.txt` is missing, or `MODEL_DIR` in `.env` is wrong. It must be the model folder itself, not its parent and not a symlink — download all four files from [Nimaone/nemotron-asr-streaming-farsi-onnx](https://huggingface.co/Nimaone/nemotron-asr-streaming-farsi-onnx), check the folder layout under **Get the model**, and check the logs: `docker compose logs` |
+| Container exits right away | One of `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, or `tokens.txt` is missing, or `MODEL_DIR` in `.env` is wrong. It must be the model folder itself, not its parent and not a symlink ; download all four files from [Nimaone/nemotron-asr-streaming-farsi-onnx](https://huggingface.co/Nimaone/nemotron-asr-streaming-farsi-onnx), check the folder layout under **Get the model**, and check the logs: `docker compose logs` |
 | `Expected 16000 Hz, received …` | The client sent audio at another sample rate. VocaLinux sends 16 kHz; files tested with `curl` must be converted first |
 | `Expected mono audio, received 2 channels` | The WAV is stereo. Convert it to mono before sending |
 | VocaLinux / OpenWhispr reports a connection error | The server is not running, or the server URL is wrong. Test with `curl http://127.0.0.1:8765/` first |
-| First or last word is cut off | Update to the current script — it already pads the audio with silence at both ends to prevent this |
+| First or last word is cut off | Update to the current script ; it already pads the audio with silence at both ends to prevent this |
 | Transcription is slow | Lower `num_threads` / `OMP_NUM_THREADS` to match your CPU, and keep dictation phrases reasonably short |
 
 ## Privacy and security
 
-- The server listens on `127.0.0.1` only and has **no authentication** — it is designed for your own machine. Do not expose port `8765` to a network you do not trust; if you ever run it on another host, put it on a trusted LAN or behind HTTPS.
+- The server listens on `127.0.0.1` only and has **no authentication** ; it is designed for your own machine. Do not expose port `8765` to a network you do not trust; if you ever run it on another host, put it on a trusted LAN or behind HTTPS.
 - The container runs with a read-only filesystem, all capabilities dropped, `no-new-privileges`, and the model mounted read-only.
 - Nothing is logged except the transcript line the server prints for each request, which stays in your local container logs.
 
 ## Limitations
 
-- **Persian only** — the model's tokenizer and `fa-IR` tuning are Persian-specific; other languages are not supported.
-- **One request at a time** — decoding is serialized behind a lock, which suits single-user dictation but not multi-user serving.
-- **WAV only** — no MP3, WebM, resampling, or channel conversion; clients must send 16 kHz mono WAV as-is.
-- **No streaming response** — despite the streaming recognizer inside, each request transcribes one complete utterance and returns the final text.
-- **OpenAI-compatible core only** — the endpoint returns `{"text": "..."}` and ignores the `model` field; it does not return durations, segments, or other full OpenAI response fields, and it has no authentication.
+- **Persian only** ; the model's tokenizer and `fa-IR` tuning are Persian-specific; other languages are not supported.
+- **One request at a time** ; decoding is serialized behind a lock, which suits single-user dictation but not multi-user serving.
+- **WAV only** ; no MP3, WebM, resampling, or channel conversion; clients must send 16 kHz mono WAV as-is.
+- **No streaming response** ; despite the streaming recognizer inside, each request transcribes one complete utterance and returns the final text.
+- **OpenAI-compatible core only** ; the endpoint returns `{"text": "..."}` and ignores the `model` field; it does not return durations, segments, or other full OpenAI response fields, and it has no authentication.
 
 ## Acknowledgements
 
-- [VocaLinux](https://github.com/VocaHQ/vocalinux) by VocaHQ — one of the dictation apps that can use this API (AGPL-3.0)
-- OpenWhispr — the dictation app for Windows, macOS and Linux that can point its BYOK mode at this API
-- sherpa-onnx by the k2-fsa team — the ONNX inference runtime used for decoding
-- [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi) — the Persian Nemotron model, and its ONNX export [Nimaone/nemotron-asr-streaming-farsi-onnx](https://huggingface.co/Nimaone/nemotron-asr-streaming-farsi-onnx)
-- NVIDIA Nemotron — the base streaming ASR architecture the Persian model was fine-tuned from
+- [VocaLinux](https://github.com/VocaHQ/vocalinux) by VocaHQ ; one of the dictation apps that can use this API (AGPL-3.0)
+- OpenWhispr ; the dictation app for Windows, macOS and Linux that can point its BYOK mode at this API
+- sherpa-onnx by the k2-fsa team ; the ONNX inference runtime used for decoding
+- [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi) ; the Persian Nemotron model, and its ONNX export [Nimaone/nemotron-asr-streaming-farsi-onnx](https://huggingface.co/Nimaone/nemotron-asr-streaming-farsi-onnx)
+- NVIDIA Nemotron ; the base streaming ASR architecture the Persian model was fine-tuned from
 
-Model weights are distributed under their own licenses — check the model pages above before redistributing them.
+Model weights are distributed under their own licenses ; check the model pages above before redistributing them.
