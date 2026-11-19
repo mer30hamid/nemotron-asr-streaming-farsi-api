@@ -1,0 +1,64 @@
+services:
+  nemotron-asr-streaming-farsi-api:
+    image: localhost/nemotron-asr-streaming-farsi-api:1.0
+    container_name: nemotron-asr-streaming-farsi-api
+
+    build:
+      context: .
+      dockerfile: Containerfile
+
+    restart: unless-stopped
+    init: true
+
+    network_mode: host
+
+    volumes:
+      # MODEL_DIR is the host path to the model folder itself
+      # (the folder containing encoder.int8.onnx, decoder.int8.onnx,
+      # joiner.int8.onnx and tokens.txt). Set it in .env — see .env.example.
+      # It is mounted at the exact path the server expects inside the
+      # container, so no symlink is needed. Do not use a symlink inside
+      # a mounted volume: it is resolved inside the container, not on
+      # the host, and will break if its target is outside the mount.
+      - ${MODEL_DIR}:/models/nemotron-asr-streaming-farsi-onnx:ro
+
+    environment:
+      PYTHONUNBUFFERED: "1"
+      # Keep OMP threads in sync with the recognizer threads.
+      OMP_NUM_THREADS: "${ASR_THREADS:-8}"
+      # Everything below is passed through to nemotron_asr_streaming_farsi_api.py.
+      # Defaults match the previous hard-coded values, so .env only
+      # needs to set what you actually want to change.
+      MODEL_PATH: "${MODEL_PATH:-/models/nemotron-asr-streaming-farsi-onnx}"
+      ASR_HOST: "${ASR_HOST:-127.0.0.1}"
+      ASR_PORT: "${ASR_PORT:-8765}"
+      ASR_THREADS: "${ASR_THREADS:-8}"
+      ASR_SAMPLE_RATE: "${ASR_SAMPLE_RATE:-16000}"
+      ASR_LANGUAGE: "${ASR_LANGUAGE:-fa-IR}"
+      ASR_DECODING_METHOD: "${ASR_DECODING_METHOD:-greedy_search}"
+      ASR_MAX_UPLOAD_MB: "${ASR_MAX_UPLOAD_MB:-50}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    read_only: true
+
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+
+    stop_grace_period: 10s
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${ASR_PORT:-8765}/', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
