@@ -21,7 +21,7 @@ Text is typed into the focused app (dictation clients)
 
 Everything runs on your own machine. Audio never leaves `127.0.0.1` unless you deliberately point a client at a LAN address.
 
-The name follows the original model, [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi), plus `-api`. It deliberately does **not** contain `onnx` or a client name: ONNX via sherpa-onnx is the current backend, but the backend could change later (for example to another export of the same model), and the clients are interchangeable ; VocaLinux is one of them, not the identity of this project.
+The name follows the original model, [mallahyari/nemotron-asr-streaming-farsi](https://github.com/mallahyari/nemotron-asr-streaming-farsi), plus `-api`. It deliberately does **not** contain `onnx` or a client name: ONNX via sherpa-onnx is the current backend, but the backend could change later (for example to another export of the same model), and the clients are interchangeable ; VocaLinux is one of them, not the identity of this project.
 
 ## Features
 
