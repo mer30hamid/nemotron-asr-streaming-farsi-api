@@ -4,7 +4,7 @@ An OpenAI-compatible Persian speech-to-text API server for the Nemotron ASR stre
 
 The server loads the Persian Nemotron model and exposes one endpoint, `POST /v1/audio/transcriptions`. Any dictation client that can talk to that endpoint can use it. VocaLinux on Linux is the one I have tested. OpenWhispr should work the same way, but I have not tested it yet.
 
-The name comes from the original model, [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi), plus `-api`. It has no client name in it, because the client can change. It has no `onnx` in it either. ONNX through sherpa-onnx is the backend I use now, but a different export of the same model could replace it later without a rename.
+The name comes from the original model, [mallahyari/nemotron-asr-streaming-farsi](https://github.com/mallahyari/nemotron-asr-streaming-farsi), plus `-api`. It has no client name in it, because the client can change. It has no `onnx` in it either. ONNX through sherpa-onnx is the backend I use now, but a different export of the same model could replace it later without a rename.
 
 ```text
 You speak (Persian)
