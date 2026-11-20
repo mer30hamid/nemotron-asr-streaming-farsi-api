@@ -28,7 +28,7 @@ Everything runs on your own machine. Audio never leaves `127.0.0.1` unless you p
 | Client | Platform | Status |
 | --- | --- | --- |
 | VocaLinux (Remote API engine) | Linux | ✅ Tested |
-| OpenWhispr (BYOK mode) | Windows, macOS, Linux | Not tested |
+| OpenWhispr (BYOK mode) | Windows, macOS, Linux | ✅ Tested |
 | TapWisper (self-hosted endpoint) | Windows, macOS | Not tested |
 | Any other OpenAI-compatible client | - | Not tested |
 
@@ -181,12 +181,12 @@ Expected response:
 > [!NOTE]
 > The Remote API engine is off by default in VocaLinux and only sends audio to a server you configure. Here that server is on your own machine, so dictation stays local end to end.
 
-### OpenWhispr (Windows, macOS, Linux) - Not tested
+### OpenWhispr (Windows, macOS, Linux) - ✅ Tested
 
-1. Start the server (above) and leave it running.
+1. Start the API server and leave it running.
 2. In OpenWhispr, open **Settings → Speech-to-Text / Transcription**.
-3. Set the provider to **OpenAI (BYOK / Cloud)**. Not Local Whisper, not NVIDIA.
-4. Set **Base URL / Endpoint** to `http://127.0.0.1:8765/v1`, **Model** to `nemotron-farsi`, and **API Key** to any dummy value such as `sk-local`. The server does not check keys, and the model field is ignored.
+3. Set the provider to **OpenAI (BYOK / Bring Your Own Key / Cloud)**. Not Local Whisper, not NVIDIA.
+4. Set **Base URL / Endpoint** to `http://127.0.0.1:8765/v1`, **Model** to `nemotron-farsi`, and **API Key** to blank or any dummy value such as `sk-local`. The server does not check keys, and the model field is ignored.
 5. Save, then press your dictation shortcut and speak Persian.
 
 If the client runs on a different machine from the server, `127.0.0.1` on that machine is not the server. Set `ASR_HOST=0.0.0.0` in `.env`, open port `8765` on the server's firewall, and point the client at the server's LAN address, for example `http://192.168.1.10:8765/v1`. Only do this on a trusted LAN. The server has no authentication.
