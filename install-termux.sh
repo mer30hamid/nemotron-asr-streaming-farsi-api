@@ -112,14 +112,18 @@ PY
 
 # Fetch or update the application source.
 if [[ -d "$APP_DIR/.git" ]]; then
-  info "Updating existing Git checkout..."
-  git -C "$APP_DIR" pull --ff-only
-elif [[ -e "$APP_DIR" ]] && [[ -n "$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-  die "$APP_DIR already exists but is not a Git checkout. Move it aside and retry."
+    info "Updating existing Git checkout..."
+    git -C "$APP_DIR" pull --ff-only
 else
-  info "Cloning the API repository..."
-  rmdir "$APP_DIR" 2>/dev/null || true
-  git clone --depth 1 "$REPO_URL" "$APP_DIR"
+    TMP_CLONE="${APP_DIR}.source-tmp.$$"
+
+    info "Cloning repository..."
+    git clone --depth 1 "$REPO_URL" "$TMP_CLONE"
+
+    info "Merging repository files (preserving existing models)..."
+    cp -a "$TMP_CLONE/." "$APP_DIR/"
+
+    rm -rf "$TMP_CLONE"
 fi
 
 API_SCRIPT="$APP_DIR/nemotron_asr_streaming_farsi_api.py"
