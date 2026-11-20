@@ -27,9 +27,9 @@ Everything runs on your own machine. Audio never leaves `127.0.0.1` unless you p
 
 | Client | Platform | Status |
 | --- | --- | --- |
-| VocaLinux (Remote API engine) | Linux | ✅ Tested |
-| OpenWhispr (BYOK mode) | Windows, macOS, Linux | ✅ Tested |
-| TapWisper (self-hosted endpoint) | Windows, macOS | Not tested |
+| [VocaLinux](https://github.com/VocaHQ/vocalinux) (Remote API engine) | Linux | ✅ Tested |
+| [OpenWhispr](https://github.com/OpenWhispr/openwhispr) (BYOK mode) | Windows, macOS, Linux | ✅ Tested |
+| [TapWisper](https://github.com/zeyadelosherey/tapwisper-desktop) (self-hosted endpoint) | Windows, macOS | ✅ Tested |
 | Any other OpenAI-compatible client | - | Not tested |
 
 If you test another client, please open an issue and say what worked or what did not.
