@@ -48,7 +48,7 @@ services:
     read_only: true
 
     tmpfs:
-      - /tmp:size=32m,noexec,nosuid
+      - /tmp:size=256m,noexec,nosuid
 
     stop_grace_period: 10s
 
