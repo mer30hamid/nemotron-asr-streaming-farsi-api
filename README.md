@@ -21,9 +21,18 @@ You speak (Persian)
 Text is typed into the focused app (dictation clients)
 ```
 
+All incoming audio is normalized to the following format before transcription:
+
+| Property | Required value |
+| --- | --- |
+| Format | WAV, 16-bit PCM |
+| Channels | Mono (1) |
+| Sample rate | 16,000 Hz |
+| Max upload size | 50 MB |
+
 Everything runs on your own machine. Audio never leaves `127.0.0.1` unless you point a client at a LAN address yourself.
 
-## Tested clients
+## Tested dictation clients
 
 | Client | Platform | Status |
 | --- | --- | --- |
@@ -45,20 +54,9 @@ If you test another client, please open an issue and say what worked or what did
 
 ## Requirements
 
-- Linux for Docker/Podman deployment, or Windows, macOS, or Linux with Python 3.11+ for running the script directly
-- FFmpeg installed and available in PATH
-- The Persian Nemotron ONNX model files (see below)
-- A dictation client, such as VocaLinux, OpenWhispr, or TapWisper, or `curl` to test the API
-- A microphone. The client handles audio capture, voice activity detection, and text injection
-
-All incoming audio is normalized to the following format before transcription:
-
-| Property | Required value |
-| --- | --- |
-| Format | WAV, 16-bit PCM |
-| Channels | Mono (1) |
-| Sample rate | 16,000 Hz |
-| Max upload size | 50 MB |
+- Docker/Podman or Python 3.11+ for running the script directly
+- [FFmpeg](https://ffmpeg.org/) installed and available in PATH (only needed if running the script directly)
+- The Persian Nemotron [ONNX model files](https://huggingface.co/Nimaone/nemotron-asr-streaming-farsi-onnx/tree/main) (see below)
 
 ## Get the model
 
