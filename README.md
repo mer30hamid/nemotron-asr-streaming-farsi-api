@@ -10,11 +10,11 @@ The name comes from the original model, [mehdi-hf/nemotron-asr-streaming-farsi](
 You speak (Persian)
         |
         v
-+----------------------+   WAV, 16 kHz mono    +----------------------------------+
-|  Dictation client    | --------------------> | nemotron-asr-streaming-farsi-api |
-|  VocaLinux           |                       | Nemotron Farsi, int8             |
-|  OpenWhispr          | <-------------------- | sherpa-onnx, CPU                 |
-|  TapWisper, curl     |     {"text": "..."}   +----------------------------------+
++----------------------+   Audio (auto normalize to WAV, 16 kHz mono)   +----------------------------------+
+|  Dictation client    | ---------------------------------------------> | nemotron-asr-streaming-farsi-api |
+|  VocaLinux           |                                                | Nemotron Farsi, int8             |
+|  OpenWhispr          | <--------------------------------------------- | sherpa-onnx, CPU                 |
+|  TapWisper, curl     |     {"text": "..."}                            +----------------------------------+
 +----------------------+
         |
         v
@@ -41,7 +41,7 @@ If you test another client, please open an issue and say what worked or what did
 - CPU only. It uses the quantized `int8` ONNX model through sherpa-onnx, so no GPU is needed
 - One OpenAI-compatible endpoint: `POST /v1/audio/transcriptions`, returning `{"text": "..."}`
 - Hardened container: read-only filesystem, all Linux capabilities dropped, `no-new-privileges`, and the model mounted read-only
-- Small. One Python file, two dependencies (`sherpa-onnx`, `numpy`), and a `python:3.11-slim` base image
+- Lightweight Python implementation with two Python dependencies (`sherpa-onnx`, `numpy`) and `FFmpeg` for audio format conversion
 
 ## Requirements
 
@@ -138,7 +138,7 @@ The first start takes a little longer while the model loads. The container is na
 python3 -m venv venv # in windows: python -m venv venv
 source venv/bin/activate # in windows: .\venv\Scripts\activate
 pip install -r requirements.txt
-MODEL_PATH=/path/to/nemotron-asr-streaming-farsi-onnx # in windows: $env:MODEL_PATH = "c:\path\to\nemotron-asr-streaming-farsi-onnx"
+export MODEL_PATH=/path/to/nemotron-asr-streaming-farsi-onnx # in windows: $env:MODEL_PATH = "c:\path\to\nemotron-asr-streaming-farsi-onnx"
 python nemotron_asr_streaming_farsi_api.py
 ```
 
@@ -207,7 +207,7 @@ curl -X POST http://127.0.0.1:8765/v1/audio/transcriptions \
 {"text": "سلام، این یک آزمایش است"}
 ```
 
-Audio requirements are strict. This is exactly what dictation clients send:
+All incoming audio is normalized to the following format before transcription:
 
 | Property | Required value |
 | --- | --- |
@@ -215,8 +215,6 @@ Audio requirements are strict. This is exactly what dictation clients send:
 | Channels | Mono (1) |
 | Sample rate | 16,000 Hz |
 | Max upload size | 50 MB |
-
-If the input audio does not meet these requirements, the API server will attempt to automatically convert it to the required format.
 
 ## Configuration
 
@@ -252,7 +250,7 @@ Health check, also used by the Compose healthcheck.
 OpenAI-compatible transcription endpoint. Send the audio as a multipart form field named `file`.
 
 - Success: `200` with `{"text": "<transcript>"}`
-- Failure: `400` with `{"error": "<reason>"}`, for example a wrong sample rate, stereo audio, or a missing `file` field
+- Failure: `400` with `{"error": "<reason>"}`, for example unsupported or invalid audio, missing file field, or upload exceeding the size limit.
 - Unknown paths return `404`
 
 Under the hood, each request is decoded with a sherpa-onnx `OnlineRecognizer` (transducer, `greedy_search`, 128-dim features, language `fa-IR`). A short silence is fed before and after the audio so the streaming encoder does not clip the first or last words. The server logs the audio duration, decoding time, and real-time factor (RTF) for every request.
@@ -283,7 +281,7 @@ nemotron-asr-streaming-farsi-api/
 
 - The server listens on `127.0.0.1` only and has no authentication. It is designed for your own machine. Do not expose port `8765` to a network you do not trust. If you ever run it on another host, put it on a trusted LAN or behind HTTPS.
 - The container runs with a read-only filesystem, all capabilities dropped, `no-new-privileges`, and the model mounted read-only.
-- Nothing is logged except the transcript line the server prints for each request, which stays in your local container logs.
+- The server logs transcription results, processing statistics, HTTP requests, and errors locally. Audio is not permanently stored; temporary converted files are deleted after processing
 
 ## Limitations
 
