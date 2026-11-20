@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import tempfile
 import subprocess
 import json
 import os
@@ -87,58 +88,123 @@ def extract_audio(content_type, body):
 
 
 
+
 def transcribe(audio_bytes):
 
     import io
 
-    # Decode any supported audio format and normalize to:
-    # WAV / PCM signed 16-bit / mono / 16 kHz
+    # ---------------------------------------------------------
+    # 1. Check whether the uploaded file is already a valid
+    #    WAV / PCM 16-bit / mono / 16 kHz.
+    # ---------------------------------------------------------
+
+    frames = None
+    input_format = "unknown"
+
     try:
-        converted = subprocess.run(
-            [
-                "ffmpeg",
-                "-hide_banner",
-                "-loglevel", "error",
-                "-i", "pipe:0",
-                "-vn",
-                "-ac", "1",
-                "-ar", str(SAMPLE_RATE),
-                "-c:a", "pcm_s16le",
-                "-f", "wav",
-                "pipe:1",
-            ],
-            input=audio_bytes,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-            timeout=120,
-        )
+        with wave.open(io.BytesIO(audio_bytes), "rb") as wav:
 
-    except FileNotFoundError:
-        raise RuntimeError(
-            "FFmpeg not found. Install FFmpeg and add it to PATH."
-        )
+            input_format = "wav"
 
-    except subprocess.TimeoutExpired:
-        raise ValueError("Audio conversion timed out.")
+            is_compatible = (
+                wav.getcomptype() == "NONE"
+                and wav.getnchannels() == 1
+                and wav.getframerate() == SAMPLE_RATE
+                and wav.getsampwidth() == 2
+            )
 
-    except subprocess.CalledProcessError as exc:
-        error = exc.stderr.decode("utf-8", errors="replace")
-        raise ValueError(
-            f"Unsupported or invalid audio format: {error[:1000]}"
-        )
+            if is_compatible:
+                frames = wav.readframes(wav.getnframes())
+                logging.info(
+                    "Input is already compatible WAV. Skipping FFmpeg."
+                )
 
-    # Read normalized WAV
-    with wave.open(io.BytesIO(converted.stdout), "rb") as wav:
+    except (wave.Error, EOFError, OSError):
+        # Not a readable WAV file. FFmpeg will identify its format.
+        pass
 
-        channels = wav.getnchannels()
-        sample_rate = wav.getframerate()
-        sample_width = wav.getsampwidth()
+    # ---------------------------------------------------------
+    # 2. Convert only when necessary.
+    #    FFmpeg automatically detects the input format.
+    # ---------------------------------------------------------
 
-        frames = wav.readframes(wav.getnframes())
+    if frames is None:
 
-    if channels != 1 or sample_rate != SAMPLE_RATE or sample_width != 2:
-        raise ValueError("FFmpeg produced an unexpected audio format.")
+        temp_path = None
+
+        try:
+            with tempfile.NamedTemporaryFile(
+                suffix=".wav",
+                delete=False
+            ) as temp_file:
+                temp_path = temp_file.name
+
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-hide_banner",
+                    "-loglevel", "error",
+                    "-i", "pipe:0",
+                    "-map", "0:a:0",
+                    "-vn",
+                    "-sn",
+                    "-dn",
+                    "-ac", "1",
+                    "-ar", str(SAMPLE_RATE),
+                    "-c:a", "pcm_s16le",
+                    "-f", "wav",
+                    temp_path,
+                ],
+                input=audio_bytes,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                check=True,
+                timeout=120,
+            )
+
+            # Read the converted WAV from disk.
+            with wave.open(temp_path, "rb") as wav:
+
+                if (
+                    wav.getcomptype() != "NONE"
+                    or wav.getnchannels() != 1
+                    or wav.getframerate() != SAMPLE_RATE
+                    or wav.getsampwidth() != 2
+                ):
+                    raise ValueError(
+                        "FFmpeg produced an unexpected audio format."
+                    )
+
+                frames = wav.readframes(wav.getnframes())
+
+            logging.info(
+                "Audio converted successfully: %s -> WAV PCM16 mono %d Hz",
+                input_format,
+                SAMPLE_RATE,
+            )
+
+        except FileNotFoundError:
+            raise RuntimeError(
+                "FFmpeg not found. Install FFmpeg and add it to PATH."
+            )
+
+        except subprocess.TimeoutExpired:
+            raise ValueError("Audio conversion timed out.")
+
+        except subprocess.CalledProcessError as exc:
+            error = exc.stderr.decode("utf-8", errors="replace")
+            raise ValueError(
+                f"Unsupported or invalid audio format: {error[:1000]}"
+            )
+
+        finally:
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    # ---------------------------------------------------------
+    # 3. Convert PCM16 samples to float32 for Sherpa-ONNX.
+    # ---------------------------------------------------------
 
     audio = np.frombuffer(
         frames, dtype="<i2"
@@ -146,6 +212,10 @@ def transcribe(audio_bytes):
 
     if len(audio) == 0:
         return ""
+
+    # ---------------------------------------------------------
+    # 4. Nemotron inference (unchanged).
+    # ---------------------------------------------------------
 
     with recognizer_lock:
 
@@ -256,17 +326,23 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             length = int(self.headers.get("Content-Length", "0"))
-
-            if length <= 0 or length > MAX_UPLOAD_BYTES:
-                raise ValueError("Invalid audio upload size.")
-
+            
+            # Allow up to 1 MB for multipart headers and boundaries.
+            if length <= 0 or length > MAX_UPLOAD_BYTES + 1024 * 1024:
+                raise ValueError("Request size exceeds the allowed limit.")
+            
             body = self.rfile.read(length)
-            wav_bytes = extract_audio(
+            
+            audio_bytes = extract_audio(
                 self.headers.get("Content-Type", ""),
                 body,
             )
-
-            text = transcribe(wav_bytes)
+            
+            # Enforce the actual audio file size limit.
+            if len(audio_bytes) > MAX_UPLOAD_BYTES:
+                raise ValueError("Audio file exceeds the 50 MB upload limit.")
+            
+            text = transcribe(audio_bytes)
 
             self.send_json(200, {"text": text})
 
