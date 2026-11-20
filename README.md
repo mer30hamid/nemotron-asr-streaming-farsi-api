@@ -51,9 +51,18 @@ If you test another client, please open an issue and say what worked or what did
 - A dictation client, such as VocaLinux, OpenWhispr, or TapWisper, or `curl` to test the API
 - A microphone. The client handles audio capture, voice activity detection, and text injection
 
+All incoming audio is normalized to the following format before transcription:
+
+| Property | Required value |
+| --- | --- |
+| Format | WAV, 16-bit PCM |
+| Channels | Mono (1) |
+| Sample rate | 16,000 Hz |
+| Max upload size | 50 MB |
+
 ## Get the model
 
-The model files are not included in this project. Download them yourself before you start the server. Without them, the container will not start.
+The model files are not included in this project. Download them yourself before you start the server. Without them, the API server will not start.
 
 Download them from Hugging Face: **[Nimaone/nemotron-asr-streaming-farsi-onnx](https://huggingface.co/Nimaone/nemotron-asr-streaming-farsi-onnx)**
 
@@ -89,9 +98,11 @@ ls -lh /path/to/your/model-directory/nemotron-asr-streaming-farsi-onnx/
 
 ## Quick start
 
-### 1. Point Compose at your model folder
+To start the API server, you can use Docker or Python:
 
-Copy the example environment file and set `MODEL_DIR` to the model folder itself. That is the folder containing `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, and `tokens.txt`. Not its parent, and not a symlink.
+### Using Docker
+
+Copy the example environment file and set `MODEL_DIR` to the model folder itself. That is the folder containing `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, and `tokens.txt`.
 
 ```bash
 cp .env.example .env
@@ -99,32 +110,14 @@ cp .env.example .env
 # MODEL_DIR=/home/yourname/models/nemotron-asr-streaming-farsi-onnx
 ```
 
-`.env` is git-ignored. It holds a path from your own machine, so never commit it. `compose.yaml` mounts it read-only exactly where the server looks for it:
+`.env` holds a path from your own machine. `compose.yaml` mounts it read-only exactly where the server looks for it:
 
 ```yaml
 volumes:
   - ${MODEL_DIR}:/models/nemotron-asr-streaming-farsi-onnx:ro
 ```
 
-With that mount, the server finds the files here:
-
-```text
-/models/nemotron-asr-streaming-farsi-onnx/
-├── encoder.int8.onnx
-├── decoder.int8.onnx
-├── joiner.int8.onnx
-└── tokens.txt
-```
-
-Those paths are fixed inside the container (`MODEL_PATH`, default `/models/nemotron-asr-streaming-farsi-onnx`). If any of the four files is missing, misnamed, or one level too deep or too shallow, model loading will fail at startup. Do not use a symlink inside a mounted volume. It is resolved inside the container, not on the host, and will break if its target is outside the mount.
-
-All other settings (port, threads, sample rate, language, decoding method, max upload, log level) are also in `.env`. See `.env.example` for the full list with defaults. You do not need to edit `compose.yaml` or the Python file to change them.
-
-### 2. start the server
-
-To start the API server, you can use Docker or Python:
-
-#### 1. Using Docker
+run:
 
 ```bash
 docker compose up -d --build
@@ -132,7 +125,7 @@ docker compose up -d --build
 
 The first start takes a little longer while the model loads. The container is named `nemotron-asr-streaming-farsi-api` and restarts automatically (`unless-stopped`).
 
-#### 2. Using python
+### Using python
 
 ```bash
 python3 -m venv venv # in windows: python -m venv venv
@@ -142,9 +135,9 @@ export MODEL_PATH=/path/to/nemotron-asr-streaming-farsi-onnx # in windows: $env:
 python nemotron_asr_streaming_farsi_api.py
 ```
 
-The script reads the model location from the `MODEL_PATH` environment variable (default `/models/nemotron-asr-streaming-farsi-onnx`). Outside the container, point `MODEL_PATH` at your real model folder. All other settings are environment variables too. See **Configuration** section.
+The script reads the model location from the `MODEL_PATH` environment variable (default `/models/nemotron-asr-streaming-farsi-onnx`). Outside the container, point `MODEL_PATH` at your real model folder. All other settings are environment variables too. See the **Configuration** section.
 
-### 3. Check that it is up
+### Check that it is up
 
 ```bash
 curl http://127.0.0.1:8765/
@@ -154,6 +147,19 @@ Expected response:
 
 ```json
 {"status": "ok", "service": "Nemotron Farsi ASR", "model": "nemotron-farsi"}
+```
+
+Or Send an audio file with `curl`:
+
+```bash
+curl -X POST http://127.0.0.1:8765/v1/audio/transcriptions \
+  -F "file=@test.wav"
+```
+
+Expected response (Example):
+
+```json
+{"text": "سلام، این یک آزمایش است"}
 ```
 
 ## Connect a client to it
@@ -193,28 +199,6 @@ Expected response:
 If the client runs on a different machine from the server, `127.0.0.1` on that machine is not the server. Set `ASR_HOST=0.0.0.0` in `.env`, open port `8765` on the server's firewall, and point the client at the server's LAN address, for example `http://192.168.1.10:8765/v1`. Only do this on a trusted LAN. The server has no authentication.
 
 Other OpenAI-compatible dictation clients work the same way: point them at `http://127.0.0.1:8765/v1` with model `nemotron-farsi` and a dummy API key. They are untested, so please report back if you try one.
-
-## Test it without a client
-
-Send an audio file with `curl`:
-
-```bash
-curl -X POST http://127.0.0.1:8765/v1/audio/transcriptions \
-  -F "file=@test.wav"
-```
-
-```json
-{"text": "سلام، این یک آزمایش است"}
-```
-
-All incoming audio is normalized to the following format before transcription:
-
-| Property | Required value |
-| --- | --- |
-| Format | WAV, 16-bit PCM |
-| Channels | Mono (1) |
-| Sample rate | 16,000 Hz |
-| Max upload size | 50 MB |
 
 ## Configuration
 
