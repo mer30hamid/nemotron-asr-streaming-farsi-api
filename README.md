@@ -119,13 +119,29 @@ Those paths are fixed inside the container (`MODEL_PATH`, default `/models/nemot
 
 All other settings (port, threads, sample rate, language, decoding method, max upload, log level) are also in `.env`. See `.env.example` for the full list with defaults. You do not need to edit `compose.yaml` or the Python file to change them.
 
-### 2. Build and start the server
+### 2. start the server
+
+To start the API server, you can use Docker or Python:
+
+#### 1. Using Docker
 
 ```bash
 docker compose up -d --build
 ```
 
 The first start takes a little longer while the model loads. The container is named `nemotron-asr-streaming-farsi-api` and restarts automatically (`unless-stopped`).
+
+#### 2. Using python
+
+```bash
+python3 -m venv venv # in windows: python -m venv venv
+source venv/bin/activate # in windows: .\venv\Scripts\activate
+pip install -r requirements.txt
+MODEL_PATH=/path/to/nemotron-asr-streaming-farsi-onnx # in windows: $env:MODEL_PATH = "c:\path\to\nemotron-asr-streaming-farsi-onnx"
+python nemotron_asr_streaming_farsi_api.py
+```
+
+The script reads the model location from the `MODEL_PATH` environment variable (default `/models/nemotron-asr-streaming-farsi-onnx`). Outside the container, point `MODEL_PATH` at your real model folder. All other settings are environment variables too. See **Configuration** section.
 
 ### 3. Check that it is up
 
@@ -199,16 +215,24 @@ Audio requirements are strict. This is exactly what dictation clients send:
 | Sample rate | 16,000 Hz |
 | Max upload size | 50 MB |
 
-## Run without Docker
+## Configuration
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-MODEL_PATH=/path/to/nemotron-asr-streaming-farsi-onnx python nemotron_asr_streaming_farsi_api.py
-```
+Settings come from environment variables, with the defaults below. For Docker/Podman, copy `.env.example` to `.env` and change only what you need. Do not edit `compose.yaml` or `nemotron_asr_streaming_farsi_api.py` to change them:
 
-The script reads the model location from the `MODEL_PATH` environment variable (default `/models/nemotron-asr-streaming-farsi-onnx`). Outside the container, point `MODEL_PATH` at your real model folder. No symlink and no code edit needed. All other settings are environment variables too. See **Configuration** below.
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `MODEL_DIR` | *(required, no default)* | Host path to the model folder itself, set in `.env`. Mounted at `MODEL_PATH` inside the container |
+| `MODEL_PATH` | `/models/nemotron-asr-streaming-farsi-onnx` | Model directory inside the container |
+| `ASR_HOST` | `127.0.0.1` | Bind address (localhost only) |
+| `ASR_PORT` | `8765` | HTTP port |
+| `ASR_THREADS` | `8` | sherpa-onnx decoding threads. Also sets `OMP_NUM_THREADS` in the container, so the two stay in sync |
+| `ASR_SAMPLE_RATE` | `16000` | Expected input sample rate |
+| `ASR_LANGUAGE` | `fa-IR` | Language passed to the recognizer |
+| `ASR_DECODING_METHOD` | `greedy_search` | sherpa-onnx decoding method |
+| `ASR_MAX_UPLOAD_MB` | `50` | Largest audio upload the server accepts, in MB |
+| `LOG_LEVEL` | `INFO` | Server log level |
+
+If your CPU has fewer cores, lower `ASR_THREADS` in `.env`.
 
 ## API reference
 
@@ -229,25 +253,6 @@ OpenAI-compatible transcription endpoint. Send the audio as a multipart form fie
 - Unknown paths return `404`
 
 Under the hood, each request is decoded with a sherpa-onnx `OnlineRecognizer` (transducer, `greedy_search`, 128-dim features, language `fa-IR`). A short silence is fed before and after the audio so the streaming encoder does not clip the first or last words. The server logs the audio duration, decoding time, and real-time factor (RTF) for every request.
-
-## Configuration
-
-Settings come from environment variables, with the defaults below. For Docker/Podman, copy `.env.example` to `.env` and change only what you need. Do not edit `compose.yaml` or `nemotron_asr_streaming_farsi_api.py` to change them:
-
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `MODEL_DIR` | *(required, no default)* | Host path to the model folder itself, set in `.env`. Mounted at `MODEL_PATH` inside the container |
-| `MODEL_PATH` | `/models/nemotron-asr-streaming-farsi-onnx` | Model directory inside the container |
-| `ASR_HOST` | `127.0.0.1` | Bind address (localhost only) |
-| `ASR_PORT` | `8765` | HTTP port |
-| `ASR_THREADS` | `8` | sherpa-onnx decoding threads. Also sets `OMP_NUM_THREADS` in the container, so the two stay in sync |
-| `ASR_SAMPLE_RATE` | `16000` | Expected input sample rate |
-| `ASR_LANGUAGE` | `fa-IR` | Language passed to the recognizer |
-| `ASR_DECODING_METHOD` | `greedy_search` | sherpa-onnx decoding method |
-| `ASR_MAX_UPLOAD_MB` | `50` | Largest audio upload the server accepts, in MB |
-| `LOG_LEVEL` | `INFO` | Server log level |
-
-If your CPU has fewer cores, lower `ASR_THREADS` in `.env`.
 
 ## Project structure
 
