@@ -162,15 +162,50 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+
     def do_GET(self):
-        if self.path == "/":
+        path = self.path.split("?", 1)[0]
+
+        # Health check
+        if path == "/":
             self.send_json(200, {
                 "status": "ok",
                 "service": "Nemotron Farsi ASR",
                 "model": "nemotron-farsi",
             })
-        else:
-            self.send_json(404, {"error": "Not found"})
+            return
+
+        # OpenAI-compatible model information
+        if path == "/v1/models":
+            self.send_json(200, {
+                "object": "list",
+                "data": [
+                    {
+                        "id": "nemotron-farsi",
+                        "object": "model",
+                        "created": int(time.time()),
+                        "owned_by": "local",
+                    }
+                ],
+            })
+            return
+        # OpenAI-compatible individual model information
+        if path == "/v1/models/nemotron-farsi":
+            self.send_json(200, {
+                "id": "nemotron-farsi",
+                "object": "model",
+                "created": int(time.time()),
+                "owned_by": "local",
+            })
+            return
+
+        self.send_json(404, {
+            "error": {
+                "message": "Not found",
+                "type": "invalid_request_error",
+                "code": "not_found",
+            }
+        })
 
     def do_POST(self):
         if self.path != "/v1/audio/transcriptions":
