@@ -117,8 +117,8 @@ info "Updating Termux package lists..."
 pkg update -y
 pkg upgrade -y
 
-info "Installing Python, Git, curl and FFmpeg..."
-pkg install -y python git curl ffmpeg libexpat openssl
+info "Installing Python, NumPy, Git, curl and FFmpeg..."
+pkg install -y python python-numpy git curl ffmpeg libexpat openssl
 
 command -v python >/dev/null 2>&1 || die "Python was not installed."
 command -v git    >/dev/null 2>&1 || die "Git was not installed."
@@ -133,6 +133,15 @@ import sys
 if sys.version_info < (3, 11):
     raise SystemExit(1)
 PY
+
+# NumPy must come from Termux, not from pip. PyPI wheels for NumPy are
+# built for glibc Linux, so on Termux (Android/Bionic) pip falls back to
+# building NumPy from source, and that build fails.
+python - <<'PY' || die "NumPy from Termux (python-numpy) was not installed."
+import numpy
+PY
+NUMPY_VERSION="$(python -c 'import numpy; print(numpy.__version__)')"
+info "Termux NumPy version: $NUMPY_VERSION"
 
 # ---------------------------------------------------------------------------
 # Fetch / merge application source (never destroy existing models)
@@ -269,21 +278,41 @@ info "Note: only minimum-size checks are performed. The project does not publish
 #   .../python -m ensurepip --upgrade --default-pip
 #   returned non-zero exit status 1
 # The reliable approach on Termux is:
-#   1. python -m venv --without-pip <dir>
+#   1. python -m venv --without-pip --system-site-packages <dir>
 #   2. bootstrap pip with get-pip.py into that venv
 #
+# --system-site-packages is required here. An isolated venv cannot see
+# the Termux NumPy package, so pip would try to install NumPy from PyPI
+# and fall back to building it from source, which fails on Termux.
+#
+# A venv created by an older installer, or by the failed run, is
+# isolated. Recreate it so the new run actually gets a venv that can
+# see the Termux NumPy package.
 
-if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+RECREATE_VENV=0
+if [[ -x "$VENV_DIR/bin/python" ]]; then
+  if ! grep -qs '^include-system-site-packages = true$' "$VENV_DIR/pyvenv.cfg"; then
+    RECREATE_VENV=1
+  fi
+else
+  RECREATE_VENV=1
+fi
+
+if (( RECREATE_VENV == 1 )); then
   info "Creating Python virtual environment (without ensurepip)..."
-  # Remove a half-created venv from a previous failed run.
+  # Remove a half-created venv, or an isolated venv, from a previous run.
   if [[ -d "$VENV_DIR" ]]; then
     rm -rf "$VENV_DIR"
   fi
-  python -m venv --without-pip "$VENV_DIR"
+  python -m venv --without-pip --system-site-packages "$VENV_DIR"
 fi
 
 VENV_PYTHON="$VENV_DIR/bin/python"
 [[ -x "$VENV_PYTHON" ]] || die "Could not create the Python virtual environment."
+
+# Fail here with a clear message if the venv cannot see Termux NumPy,
+# instead of letting pip try to build NumPy from source later.
+"$VENV_PYTHON" -c 'import numpy' 2>/dev/null || die "NumPy is not visible inside the virtual environment. Re-run the installer after 'pkg install python-numpy'."
 
 # Bootstrap pip if the venv does not have it yet (common on Termux).
 if ! "$VENV_PYTHON" -m pip --version >/dev/null 2>&1; then
@@ -300,8 +329,20 @@ fi
 info "Upgrading pip, setuptools and wheel..."
 "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
 
-info "Installing project Python requirements (sherpa-onnx, numpy)..."
-"$VENV_PYTHON" -m pip install -r "$REQUIREMENTS"
+info "Installing project Python requirements (sherpa-onnx; NumPy comes from Termux)..."
+# Install everything from requirements.txt except NumPy. NumPy is
+# already installed from Termux and visible in this venv, so pip must
+# not install it, upgrade it, or build it from source. sherpa-onnx
+# does not depend on NumPy, so removing that one line removes nothing
+# else. requirements.txt itself is left unchanged: on Docker and on
+# desktop Linux the pip NumPy wheel works fine, only Termux is special.
+# --only-binary=:all: is a guard: if a package has no wheel for this
+# Termux Python, pip fails fast with a clear error instead of starting
+# a source build that cannot succeed here.
+PIP_REQUIREMENTS_TMP="$(mktemp "${TMPDIR:-/tmp}/requirements-no-numpy.XXXXXX.txt")"
+grep -vi '^[[:space:]]*numpy\([^a-z0-9_]\|$)' "$REQUIREMENTS" > "$PIP_REQUIREMENTS_TMP" || true
+"$VENV_PYTHON" -m pip install --only-binary=:all: -r "$PIP_REQUIREMENTS_TMP"
+rm -f "$PIP_REQUIREMENTS_TMP"
 
 info "Verifying imports used by the API..."
 "$VENV_PYTHON" - <<'PY'
