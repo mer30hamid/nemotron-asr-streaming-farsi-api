@@ -10,11 +10,11 @@ The name comes from the original model, [mehdi-hf/nemotron-asr-streaming-farsi](
 You speak (Persian)
         |
         v
-+----------------------+   Audio (auto normalize to WAV, 16 kHz mono)   +----------------------------------+
-|  Dictation client    | ---------------------------------------------> | nemotron-asr-streaming-farsi-api |
-|  VocaLinux           |                                                | Nemotron Farsi, int8             |
-|  OpenWhispr          | <--------------------------------------------- | sherpa-onnx, CPU                 |
-|  TapWisper, curl     |     {"text": "..."}                            +----------------------------------+
++----------------------+   Audio (auto normalize)   +----------------------------------+
+|  Dictation client    | -------------------------> | nemotron-asr-streaming-farsi-api |
+|  VocaLinux           |                            | Nemotron Farsi, int8             |
+|  OpenWhispr          | <------------------------- | sherpa-onnx, CPU                 |
+|  TapWisper, curl     |     {"text": "..."}        +----------------------------------+
 +----------------------+
         |
         v
