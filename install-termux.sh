@@ -115,9 +115,10 @@ fi
 
 info "Updating Termux package lists..."
 pkg update -y
+pkg upgrade -y
 
 info "Installing Python, Git, curl and FFmpeg..."
-pkg install -y python git curl ffmpeg
+pkg install -y python git curl ffmpeg libexpat openssl
 
 command -v python >/dev/null 2>&1 || die "Python was not installed."
 command -v git    >/dev/null 2>&1 || die "Git was not installed."
