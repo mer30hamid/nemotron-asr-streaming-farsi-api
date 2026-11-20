@@ -49,8 +49,17 @@ error()   { printf '\033[1;31m[FAIL]\033[0m %s\n' "$*" >&2; }
 
 confirm() {
   local answer
-  # Explicit prompt required by the installation specification.
-  read -r -p "$1 [y/N]: " answer
+  # Must read from the real terminal. When the installer is run via
+  #   curl ... | bash
+  # stdin is the pipe, so a plain `read` would always get EOF and treat
+  # the answer as "no". /dev/tty is the controlling terminal.
+  if [[ -r /dev/tty ]]; then
+    read -r -p "$1 [y/N]: " answer < /dev/tty
+  else
+    # Fallback (non-interactive / no tty): treat as declined.
+    printf '%s [y/N]: \n' "$1" >&2
+    answer=""
+  fi
   [[ "$answer" =~ ^[Yy]([Ee][Ss])?$ ]]
 }
 
