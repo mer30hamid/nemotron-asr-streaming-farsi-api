@@ -262,14 +262,39 @@ info "Note: only minimum-size checks are performed. The project does not publish
 # ---------------------------------------------------------------------------
 # Python virtual environment and dependencies
 # ---------------------------------------------------------------------------
+#
+# Termux Python often ships without a working ensurepip. Creating a venv the
+# normal way then fails with:
+#   .../python -m ensurepip --upgrade --default-pip
+#   returned non-zero exit status 1
+# The reliable approach on Termux is:
+#   1. python -m venv --without-pip <dir>
+#   2. bootstrap pip with get-pip.py into that venv
+#
 
 if [[ ! -x "$VENV_DIR/bin/python" ]]; then
-  info "Creating Python virtual environment..."
-  python -m venv "$VENV_DIR"
+  info "Creating Python virtual environment (without ensurepip)..."
+  # Remove a half-created venv from a previous failed run.
+  if [[ -d "$VENV_DIR" ]]; then
+    rm -rf "$VENV_DIR"
+  fi
+  python -m venv --without-pip "$VENV_DIR"
 fi
 
 VENV_PYTHON="$VENV_DIR/bin/python"
 [[ -x "$VENV_PYTHON" ]] || die "Could not create the Python virtual environment."
+
+# Bootstrap pip if the venv does not have it yet (common on Termux).
+if ! "$VENV_PYTHON" -m pip --version >/dev/null 2>&1; then
+  info "Bootstrapping pip into the virtual environment..."
+  GET_PIP_TMP="$(mktemp "${TMPDIR:-/tmp}/get-pip.XXXXXX.py")"
+  curl -fsSL "https://bootstrap.pypa.io/get-pip.py" -o "$GET_PIP_TMP"
+  "$VENV_PYTHON" "$GET_PIP_TMP"
+  rm -f "$GET_PIP_TMP"
+fi
+
+"$VENV_PYTHON" -m pip --version >/dev/null 2>&1 ||
+  die "pip is not available inside the virtual environment."
 
 info "Upgrading pip, setuptools and wheel..."
 "$VENV_PYTHON" -m pip install --upgrade pip setuptools wheel
