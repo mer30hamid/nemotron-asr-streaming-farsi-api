@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import subprocess
 import json
 import os
 import time
@@ -85,36 +86,74 @@ def extract_audio(content_type, body):
     raise ValueError("Multipart request does not contain a file field.")
 
 
-def transcribe(wav_bytes):
+
+def transcribe(audio_bytes):
+
     import io
 
-    with wave.open(io.BytesIO(wav_bytes), "rb") as wav:
+    # Decode any supported audio format and normalize to:
+    # WAV / PCM signed 16-bit / mono / 16 kHz
+    try:
+        converted = subprocess.run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel", "error",
+                "-i", "pipe:0",
+                "-vn",
+                "-ac", "1",
+                "-ar", str(SAMPLE_RATE),
+                "-c:a", "pcm_s16le",
+                "-f", "wav",
+                "pipe:1",
+            ],
+            input=audio_bytes,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+            timeout=120,
+        )
+
+    except FileNotFoundError:
+        raise RuntimeError(
+            "FFmpeg not found. Install FFmpeg and add it to PATH."
+        )
+
+    except subprocess.TimeoutExpired:
+        raise ValueError("Audio conversion timed out.")
+
+    except subprocess.CalledProcessError as exc:
+        error = exc.stderr.decode("utf-8", errors="replace")
+        raise ValueError(
+            f"Unsupported or invalid audio format: {error[:1000]}"
+        )
+
+    # Read normalized WAV
+    with wave.open(io.BytesIO(converted.stdout), "rb") as wav:
+
         channels = wav.getnchannels()
         sample_rate = wav.getframerate()
         sample_width = wav.getsampwidth()
+
         frames = wav.readframes(wav.getnframes())
 
-    if channels != 1:
-        raise ValueError(f"Expected mono audio, received {channels} channels.")
+    if channels != 1 or sample_rate != SAMPLE_RATE or sample_width != 2:
+        raise ValueError("FFmpeg produced an unexpected audio format.")
 
-    if sample_rate != SAMPLE_RATE:
-        raise ValueError(f"Expected {SAMPLE_RATE} Hz, received {sample_rate} Hz.")
-
-    if sample_width != 2:
-        raise ValueError(f"Expected 16-bit PCM, received {sample_width * 8}-bit.")
-
-    audio = np.frombuffer(frames, dtype="<i2").astype(np.float32) / 32768.0
+    audio = np.frombuffer(
+        frames, dtype="<i2"
+    ).astype(np.float32) / 32768.0
 
     if len(audio) == 0:
         return ""
 
     with recognizer_lock:
+
         stream = recognizer.create_stream()
 
-        # Same language setting as the successful Nemotron test.
         stream.set_option("language", LANGUAGE)
 
-        # Short initial silence, as in the successful test.
+        # Initial silence
         stream.accept_waveform(
             SAMPLE_RATE,
             np.zeros(int(0.5 * SAMPLE_RATE), dtype=np.float32)
@@ -122,14 +161,16 @@ def transcribe(wav_bytes):
 
         stream.accept_waveform(SAMPLE_RATE, audio)
 
-        # Tail padding: allow the streaming encoder to recognize final words.
+        # Tail padding
         tail_padding = np.zeros(
             int(1.0 * SAMPLE_RATE),
             dtype=np.float32
         )
+
         stream.accept_waveform(SAMPLE_RATE, tail_padding)
 
         stream.input_finished()
+
         start = time.perf_counter()
 
         while recognizer.is_ready(stream):
@@ -139,16 +180,17 @@ def transcribe(wav_bytes):
 
         result = recognizer.get_result(stream)
 
-    duration = len(audio) / SAMPLE_RATE
-    logging.info(
-        "Transcribed %.2fs audio in %.2fs (RTF %.3f): %s",
-        duration,
-        elapsed,
-        elapsed / duration,
-        result,
-    )
+        duration = len(audio) / SAMPLE_RATE
 
-    return result
+        logging.info(
+            "Transcribed %.2fs audio in %.2fs (RTF %.3f): %s",
+            duration,
+            elapsed,
+            elapsed / duration,
+            result,
+        )
+
+        return result
 
 
 class Handler(BaseHTTPRequestHandler):
