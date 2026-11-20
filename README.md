@@ -39,6 +39,7 @@ Everything runs on your own machine. Audio never leaves `127.0.0.1` unless you p
 | [VocaLinux](https://github.com/VocaHQ/vocalinux) (Remote API engine) | Linux | ✅ Tested |
 | [OpenWhispr](https://github.com/OpenWhispr/openwhispr) (BYOK mode) | Windows, macOS, Linux | ✅ Tested |
 | [TapWisper](https://github.com/zeyadelosherey/tapwisper-desktop) (self-hosted endpoint) | Windows, macOS | ✅ Tested |
+| [WM Keyboard](https://github.com/wasi-master/wmkeyboard) (Transcription server engine) | Android | ✅ Tested |
 | Any other OpenAI-compatible client | - | Not tested |
 
 If you test another client, please open an issue and say what worked or what did not.
@@ -134,6 +135,25 @@ python nemotron_asr_streaming_farsi_api.py
 ```
 
 The script reads the model location from the `MODEL_PATH` environment variable (default `/models/nemotron-asr-streaming-farsi-onnx`). Outside the container, point `MODEL_PATH` at your real model folder. All other settings are environment variables too. See the **Configuration** section.
+
+### Run on Android with Termux
+
+1. Install Termux from F-Droid, not from Google Play. The Play Store build is outdated.
+2. In Termux, run the installer:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/mer30hamid/nemotron-asr-streaming-farsi-api/main/install-termux.sh | bash
+   ```
+
+   The installer downloads the model (about 637 MB), clones this repository, and creates a Python virtual environment. It does not use Docker.
+3. Start the server:
+
+   ```bash
+   nemotron-farsi
+   ```
+
+   The server listens on `http://127.0.0.1:8765`, the same address as on desktop.
+4. Keep Termux open while the server runs, or use a wake lock (`termux-wake-lock`) or tmux. Set Termux battery usage to Unrestricted so Android does not stop it in the background.
 
 ### Check that it is up
 
