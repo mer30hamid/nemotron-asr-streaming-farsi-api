@@ -340,7 +340,15 @@ info "Installing project Python requirements (sherpa-onnx; NumPy comes from Term
 # Termux Python, pip fails fast with a clear error instead of starting
 # a source build that cannot succeed here.
 PIP_REQUIREMENTS_TMP="$(mktemp "${TMPDIR:-/tmp}/requirements-no-numpy.XXXXXX.txt")"
-grep -vi '^[[:space:]]*numpy\([^a-z0-9_]\|$)' "$REQUIREMENTS" > "$PIP_REQUIREMENTS_TMP" || true
+# Plain prefix match on purpose. The precise pattern with \(...\|...\)
+# does not work with the grep in Termux ("Unmatched ( or \("), so keep
+# this filter simple. requirements.txt here has only sherpa-onnx and
+# numpy, so a line starting with numpy is the numpy line.
+grep -vi '^numpy' "$REQUIREMENTS" > "$PIP_REQUIREMENTS_TMP" || true
+# Never let a failed filter silently produce an empty file: pip would
+# then install nothing and the failure would only show up later at
+# the import check. Stop here instead, with a clear message.
+[[ -s "$PIP_REQUIREMENTS_TMP" ]] || die "Filtered requirements file is empty. The NumPy filter step failed; nothing was installed."
 "$VENV_PYTHON" -m pip install --only-binary=:all: -r "$PIP_REQUIREMENTS_TMP"
 rm -f "$PIP_REQUIREMENTS_TMP"
 
