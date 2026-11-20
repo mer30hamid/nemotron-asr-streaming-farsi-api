@@ -2,7 +2,7 @@
 
 An OpenAI-compatible Persian speech-to-text API server for the Nemotron ASR streaming model. It runs locally on your CPU. No cloud, no GPU, no API key.
 
-The server loads the Persian Nemotron model and exposes one endpoint, `POST /v1/audio/transcriptions`. Any dictation client that can talk to that endpoint can use it. VocaLinux on Linux is the one I have tested. OpenWhispr should work the same way, but I have not tested it yet.
+The server loads the Persian Nemotron model and exposes one endpoint, `POST /v1/audio/transcriptions`. Any dictation client that can talk to that endpoint can use it.
 
 The name comes from the original model, [mehdi-hf/nemotron-asr-streaming-farsi](https://huggingface.co/mehdi-hf/nemotron-asr-streaming-farsi), plus `-api`. The training code for that model lives at [mallahyari/nemotron-asr-streaming-farsi](https://github.com/mallahyari/nemotron-asr-streaming-farsi). It has no client name in it, because the client can change. It has no `onnx` in it either. ONNX through sherpa-onnx is the backend I use now, but a different export of the same model could replace it later without a rename.
 
@@ -45,10 +45,11 @@ If you test another client, please open an issue and say what worked or what did
 
 ## Requirements
 
-- Linux, with Docker Compose or Podman Compose (recommended), or Python 3.11+ to run the script directly
+- Linux for Docker/Podman deployment, or Windows, macOS, or Linux with Python 3.11+ for running the script directly
+- FFmpeg installed and available in PATH
 - The Persian Nemotron ONNX model files (see below)
-- A dictation client to speak into, for example VocaLinux on Linux or OpenWhispr on Windows, macOS, and Linux. Or just `curl` to test the API
-- A microphone. The client handles capture, voice activity detection, and text injection
+- A dictation client, such as VocaLinux, OpenWhispr, or TapWisper, or `curl` to test the API
+- A microphone. The client handles audio capture, voice activity detection, and text injection
 
 ## Get the model
 
@@ -195,7 +196,7 @@ Other OpenAI-compatible dictation clients work the same way: point them at `http
 
 ## Test it without a client
 
-Send any suitable WAV file with `curl`:
+Send an audio file with `curl`:
 
 ```bash
 curl -X POST http://127.0.0.1:8765/v1/audio/transcriptions \
@@ -274,8 +275,6 @@ nemotron-asr-streaming-farsi-api/
 | Symptom | Likely cause and fix |
 | --- | --- |
 | Container exits right away | One of `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, or `tokens.txt` is missing, or `MODEL_DIR` in `.env` is wrong. It must be the model folder itself, not its parent and not a symlink. Download all four files from [Nimaone/nemotron-asr-streaming-farsi-onnx](https://huggingface.co/Nimaone/nemotron-asr-streaming-farsi-onnx), check the folder layout under **Get the model**, and check the logs: `docker compose logs` |
-| `Expected 16000 Hz, received …` | The client sent audio at another sample rate. VocaLinux sends 16 kHz. Files tested with `curl` must be converted first |
-| `Expected mono audio, received 2 channels` | The WAV is stereo. Convert it to mono before sending |
 | VocaLinux / OpenWhispr reports a connection error | The server is not running, or the server URL is wrong. Test with `curl http://127.0.0.1:8765/` first |
 | First or last word is cut off | Update to the current script. It already pads the audio with silence at both ends to prevent this |
 | Transcription is slow | Lower `num_threads` / `OMP_NUM_THREADS` to match your CPU, and keep dictation phrases reasonably short |
@@ -290,7 +289,6 @@ nemotron-asr-streaming-farsi-api/
 
 - Persian only. The model's tokenizer and `fa-IR` tuning are Persian-specific. Other languages are not supported.
 - One request at a time. Decoding is serialized behind a lock, which suits single-user dictation but not multi-user serving.
-- WAV only. No MP3, WebM, resampling, or channel conversion. Clients must send 16 kHz mono WAV as-is.
 - No streaming response. Despite the streaming recognizer inside, each request transcribes one complete utterance and returns the final text.
 - OpenAI-compatible core only. The endpoint returns `{"text": "..."}` and ignores the `model` field. It does not return durations, segments, or other full OpenAI response fields, and it has no authentication.
 
