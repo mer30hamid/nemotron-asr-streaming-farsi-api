@@ -215,6 +215,8 @@ Audio requirements are strict. This is exactly what dictation clients send:
 | Sample rate | 16,000 Hz |
 | Max upload size | 50 MB |
 
+If the input audio does not meet these requirements, the API server will attempt to automatically convert it to the required format.
+
 ## Configuration
 
 Settings come from environment variables, with the defaults below. For Docker/Podman, copy `.env.example` to `.env` and change only what you need. Do not edit `compose.yaml` or `nemotron_asr_streaming_farsi_api.py` to change them:
