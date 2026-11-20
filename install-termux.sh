@@ -352,6 +352,19 @@ grep -vi '^numpy' "$REQUIREMENTS" > "$PIP_REQUIREMENTS_TMP" || true
 "$VENV_PYTHON" -m pip install --only-binary=:all: -r "$PIP_REQUIREMENTS_TMP"
 rm -f "$PIP_REQUIREMENTS_TMP"
 
+# sherpa-onnx needs libonnxruntime.so at import time. That file is
+# shipped in sherpa-onnx-core, in the same sherpa_onnx/lib directory
+# as _sherpa_onnx.so, so it is present in this venv. But _sherpa_onnx.so
+# has a RUNPATH pointing at the system Python site-packages, not at
+# this venv, so the Android linker cannot find libonnxruntime.so
+# inside the venv and import fails with "library not found". Point
+# the linker at the venv copy with LD_LIBRARY_PATH, here and in the
+# launcher below. Without this, the installer check passes on a
+# system install but the server itself would fail the same way.
+SHERPA_LIB_DIR="$("$VENV_PYTHON" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/sherpa_onnx/lib"
+[[ -f "$SHERPA_LIB_DIR/libonnxruntime.so" ]] || die "libonnxruntime.so not found in $SHERPA_LIB_DIR. sherpa-onnx-core may not have installed correctly."
+export LD_LIBRARY_PATH="$SHERPA_LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
 info "Verifying imports used by the API..."
 "$VENV_PYTHON" - <<'PY'
 import numpy
@@ -420,6 +433,16 @@ source "$CONFIG_FILE"
 
 # The API reads MODEL_PATH (not MODEL_DIR).
 export MODEL_PATH="${MODEL_PATH:-$APP_DIR/models/nemotron-asr-streaming-farsi-onnx}"
+
+# sherpa-onnx needs its lib directory on LD_LIBRARY_PATH, or the
+# Android linker cannot find libonnxruntime.so inside the venv.
+# See the installer for why the RUNPATH in _sherpa_onnx.so is not
+# enough. Without this, the server fails at import with
+# "library libonnxruntime.so not found".
+SHERPA_LIB_DIR="$("$VENV_PYTHON" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/sherpa_onnx/lib"
+if [[ -d "$SHERPA_LIB_DIR" ]]; then
+  export LD_LIBRARY_PATH="$SHERPA_LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
 
 exec "$VENV_PYTHON" "$API_SCRIPT"
 LAUNCHER_EOF
